@@ -6,14 +6,14 @@
 <title>صفحة تأجير العجل</title>
 <style>
   body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f5f5f5; }
-  h1 { text-align: center; margin-bottom: 20px; }
+  h1 { text-align: center; margin-bottom: 10px; }
+  #currentTime { text-align: center; font-size: 1.5em; margin-bottom: 20px; font-weight: bold; }
   .bike-container { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 0 5px #ccc; }
   label { display: block; margin-top: 10px; }
   input, button { width: 100%; padding: 7px; margin-top: 5px; box-sizing: border-box; }
   button { background-color: #007bff; color: white; border: none; cursor: pointer; }
   button:hover { background-color: #0056b3; }
   .countdown { margin-top: 10px; font-weight: bold; color: #333; }
-  #currentTime { text-align: center; margin-bottom: 20px; font-size: 1.2em; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -28,6 +28,28 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
+  // ضبط توقيت مصر (UTC+2)
+  function getEgyptTime() {
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const offset = 2; // توقيت مصر +2 ساعات عن UTC
+    return new Date(utc + (3600000 * offset));
+  }
+
+  function updateCurrentTime() {
+    const egyptTime = getEgyptTime();
+    let h = egyptTime.getHours();
+    const m = egyptTime.getMinutes().toString().padStart(2, '0');
+    const s = egyptTime.getSeconds().toString().padStart(2, '0');
+    const ampm = h >= 12 ? 'م' : 'ص';
+    h = h % 12;
+    if (h === 0) h = 12;
+    document.getElementById('currentTime').textContent = `الوقت الحالي بتوقيت مصر: ${h}:${m}:${s} ${ampm}`;
+  }
+  setInterval(updateCurrentTime, 1000);
+  updateCurrentTime();
+
+  // Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyBmGUwMrocACdo3eelRAvTMFWLD8Bc9SAo",
     authDomain: "sekl-8ceef.firebaseapp.com",
@@ -42,37 +64,11 @@
   firebase.initializeApp(firebaseConfig);
   const database = firebase.database();
 
-  const bikeCount = 10;  // عدد العجلات
+  const bikeCount = 10;
   const timers = {};
 
   const container = document.getElementById('bikesContainer');
 
-  // دالة لجلب توقيت مصر
-  function getEgyptTime() {
-    const now = new Date();
-    // تحويل الوقت لتوقيت مصر UTC+2 (مع مراعاة التوقيت الصيفي)
-    // هنا نستخدم Intl API لضبط التوقيت بشكل دقيق
-    const options = { timeZone: 'Africa/Cairo' };
-    const egyptTimeStr = now.toLocaleString('en-US', options);
-    return new Date(egyptTimeStr);
-  }
-
-  // عرض الوقت الحالي بصيغة 12 ساعة مع ص/م
-  const currentTimeEl = document.getElementById('currentTime');
-  function updateCurrentTime() {
-    const now = getEgyptTime();
-    let h = now.getHours();
-    const m = now.getMinutes().toString().padStart(2, '0');
-    const s = now.getSeconds().toString().padStart(2, '0');
-    const ampm = h >= 12 ? 'م' : 'ص';
-    h = h % 12;
-    if (h === 0) h = 12;
-    currentTimeEl.textContent = `الوقت الحالي بتوقيت مصر: ${h}:${m}:${s} ${ampm}`;
-  }
-  setInterval(updateCurrentTime, 1000);
-  updateCurrentTime();
-
-  // بناء واجهة العجلات
   for (let i = 1; i <= bikeCount; i++) {
     const div = document.createElement('div');
     div.className = 'bike-container';
@@ -90,7 +86,6 @@
     container.appendChild(div);
   }
 
-  // بدء الإيجار: الوقت يبدأ من وقت مصر الحالي + مدة الإيجار
   function startRent(i) {
     const name = document.getElementById(`person${i}`).value.trim();
     const bike = document.getElementById(`bike${i}`).value.trim();
@@ -101,18 +96,18 @@
       return;
     }
 
-    const start = getEgyptTime().getTime();
-    const end = start + mins * 60 * 1000;
+    // حساب توقيت مصر الحالي
+    const start = getEgyptTime();
+    const end = new Date(start.getTime() + mins * 60 * 1000);
 
     database.ref("bikes/" + i).set({
       person: name,
       bikeName: bike,
-      startTime: start,
-      endTime: end
+      startTime: start.getTime(),
+      endTime: end.getTime()
     });
   }
 
-  // تحديث العد التنازلي
   function updateCountdown(i, endTime, person, bikeName) {
     const countdownEl = document.getElementById(`countdown${i}`);
 
@@ -133,20 +128,19 @@
       const secs = diff % 60;
 
       const endDate = new Date(endTime);
-      let h = endDate.getHours();
-      const ampm = h >= 12 ? 'م' : 'ص';
-      h = h % 12;
-      if(h === 0) h = 12;
-      const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
+      let eh = endDate.getHours();
+      const em = endDate.getMinutes().toString().padStart(2, '0');
+      const ampm = eh >= 12 ? 'م' : 'ص';
+      eh = eh % 12;
+      if (eh === 0) eh = 12;
 
-      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${h}:${endMinutes} ${ampm}`;
+      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${eh}:${em} ${ampm}`;
     }
 
     tick();
     timers[i] = setInterval(tick, 1000);
   }
 
-  // الاستماع لبيانات Firebase وتحديث الواجهة
   database.ref("bikes").on('value', snapshot => {
     const bikesData = snapshot.val() || {};
 
@@ -156,7 +150,6 @@
 
         document.getElementById(`person${i}`).value = person;
         document.getElementById(`bike${i}`).value = bikeName;
-        document.getElementById(`duration${i}`).value = ''; // نمسح مدة الإيجار بعد الحفظ
 
         updateCountdown(i, endTime, person, bikeName);
       } else {
