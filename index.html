@@ -70,8 +70,8 @@
       return;
     }
 
-    const now = new Date();
-    const egyptTime = new Date(now.getTime() + (2 * 60 * 60 * 1000)); // توقيت مصر UTC+2
+    const nowUTC = new Date();
+    const egyptTime = new Date(nowUTC.getTime() + 2 * 60 * 60 * 1000); // توقيت مصر
     const startTime = egyptTime.getTime();
     const endTime = startTime + mins * 60 * 1000;
 
@@ -88,8 +88,9 @@
     if (timers[i]) clearInterval(timers[i]);
 
     function tick() {
-      const now = new Date().getTime() + (2 * 60 * 60 * 1000); // توقيت مصر
-      let diff = Math.floor((endTime - now) / 1000);
+      const nowUTC = new Date();
+      const nowEgypt = nowUTC.getTime() + 2 * 60 * 60 * 1000;
+      let diff = Math.floor((endTime - nowEgypt) / 1000);
 
       if (diff <= 0) {
         countdownEl.textContent = `انتهى وقت إيجار العجلة "${bikeName}" للمستأجر "${person}"!`;
@@ -102,11 +103,13 @@
       const secs = diff % 60;
 
       const endDate = new Date(endTime);
-      const hours = endDate.getUTCHours() + 2; // UTC+2
-      const minutes = endDate.getUTCMinutes().toString().padStart(2, '0');
-      const displayHour = (hours % 24).toString().padStart(2, '0');
+      const hours = (endDate.getUTCHours() + 2) % 24;
+      const minutes = endDate.getUTCMinutes();
 
-      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${displayHour}:${minutes}`;
+      const formattedHour = hours.toString().padStart(2, '0');
+      const formattedMinute = minutes.toString().padStart(2, '0');
+
+      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${formattedHour}:${formattedMinute}`;
     }
 
     tick();
@@ -118,7 +121,7 @@
 
     for (let i = 1; i <= bikeCount; i++) {
       if (bikesData[i]) {
-        const { person, bikeName, endTime } = bikesData[i];
+        const { person, bikeName, endTime, startTime } = bikesData[i];
 
         document.getElementById(`person${i}`).value = person;
         document.getElementById(`bike${i}`).value = bikeName;
@@ -129,7 +132,6 @@
         document.getElementById(`bike${i}`).value = '';
         document.getElementById(`duration${i}`).value = '';
         document.getElementById(`countdown${i}`).textContent = '-';
-
         if (timers[i]) {
           clearInterval(timers[i]);
           timers[i] = null;
