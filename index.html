@@ -2,86 +2,22 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>إيجار 25 عجلة</title>
+  <title>نظام تأجير العجل</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; }
-    input, button { font-size: 1em; padding: 6px; margin: 3px 0; width: 100%; box-sizing: border-box; }
-    label { font-weight: bold; margin-top: 8px; display: block; }
-    .bike-container { border: 1px solid #ccc; padding: 12px; margin-bottom: 15px; border-radius: 8px; background: #f9f9f9; }
-    .countdown { font-size: 1.1em; color: #d33; margin-top: 8px; }
+    body { font-family: Arial; padding: 20px; direction: rtl; background: #f0f0f0; }
+    .bike-container { background: white; padding: 15px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 5px #ccc; }
+    input, button { width: 100%; padding: 10px; margin: 5px 0; box-sizing: border-box; font-size: 1em; }
+    .countdown, .end-time { margin-top: 10px; font-weight: bold; }
   </style>
 </head>
 <body>
 
-<h1>برنامج إيجار 25 عجلة</h1>
+<h1>صفحة تأجير العجل</h1>
+
 <div id="bikesContainer"></div>
 
 <audio id="alarmSound" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
 
-<script>
-  const bikesContainer = document.getElementById('bikesContainer');
-  const alarmSound = document.getElementById('alarmSound');
-  const bikeCount = 25;
-  const timers = new Array(bikeCount).fill(null);
-
-  for(let i=1; i<=bikeCount; i++) {
-    const bikeDiv = document.createElement('div');
-    bikeDiv.className = 'bike-container';
-    bikeDiv.innerHTML = `
-      <h3>العجلة رقم ${i}</h3>
-      <label>اسم المستأجر:</label>
-      <input type="text" id="personName${i}" placeholder="ادخل اسم المستأجر" />
-      <label>اسم العجلة:</label>
-      <input type="text" id="bikeName${i}" placeholder="ادخل اسم العجلة" />
-      <label>مدة الإيجار (بالدقائق):</label>
-      <input type="number" id="minutes${i}" min="1" placeholder="ادخل مدة الإيجار" />
-      <button id="startBtn${i}">ابدأ العد التنازلي للعجلة رقم ${i}</button>
-      <div class="countdown" id="countdown${i}">الوقت المتبقي: -</div>
-    `;
-    bikesContainer.appendChild(bikeDiv);
-
-    const startBtn = bikeDiv.querySelector(`#startBtn${i}`);
-
-    startBtn.addEventListener('click', () => {
-      if(timers[i-1]) clearInterval(timers[i-1]);
-
-      const personName = document.getElementById(`personName${i}`).value.trim();
-      const bikeName = document.getElementById(`bikeName${i}`).value.trim();
-      let minutes = parseInt(document.getElementById(`minutes${i}`).value);
-      const countdownEl = document.getElementById(`countdown${i}`);
-
-      if(!personName || !bikeName || isNaN(minutes) || minutes <= 0) {
-        alert('من فضلك اكمل كل البيانات بشكل صحيح');
-        return;
-      }
-
-      // حساب وقت الانتهاء
-      const now = new Date();
-      const endTime = new Date(now.getTime() + minutes * 60000);
-      let hours = endTime.getHours();
-      let minutesEnd = endTime.getMinutes().toString().padStart(2, '0');
-      let period = hours >= 12 ? 'مساءً' : 'صباحًا';
-      hours = hours % 12 || 12;
-      let endFormatted = `${hours}:${minutesEnd} ${period}`;
-
-      let timeLeft = minutes * 60;
-      countdownEl.textContent = `الوقت المتبقي: ${minutes} دقيقة و 0 ثانية. ينتهي الساعة ${endFormatted}`;
-
-      timers[i-1] = setInterval(() => {
-        if(timeLeft <= 0) {
-          clearInterval(timers[i-1]);
-          countdownEl.textContent = `انتهى وقت إيجار العجلة "${bikeName}" للمستأجر "${personName}"!`;
-          alarmSound.play();
-        } else {
-          const mins = Math.floor(timeLeft / 60);
-          const secs = timeLeft % 60;
-          countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية. ينتهي الساعة ${endFormatted}`;
-          timeLeft--;
-        }
-      }, 1000);
-    });
-  }
-</script>
-
+<script type="module" src="main.js"></script>
 </body>
 </html>
