@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>صفحة تأجير العجل مع الوقت بتوقيت مصر + ساعة</title>
+<title>صفحة تأجير العجل مع الوقت المحلي للجهاز</title>
 <style>
   body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f5f5f5; }
   h1 { text-align: center; margin-bottom: 20px; }
@@ -41,30 +41,24 @@
   firebase.initializeApp(firebaseConfig);
   const database = firebase.database();
 
-  // دالة للحصول على التوقيت الحالي في مصر (توقيت القاهرة UTC+2 مع الأخذ في الاعتبار التوقيت الصيفي)
-  function getEgyptTime() {
-    const now = new Date();
-    // وقت UTC + 2 ساعات
-    // بدلاً من تعقيد التوقيت الصيفي نستخدم toLocaleString مع المنطقة
-    const options = { timeZone: 'Africa/Cairo', hour12: false };
-    const egyptTimeString = now.toLocaleString('en-US', options);
-    return new Date(egyptTimeString);
+  // دالة ترجع الوقت المحلي للجهاز بدون تعديل
+  function getLocalTime() {
+    return new Date();
   }
 
-  // تحديث عرض الوقت بعد ساعة بتوقيت مصر
-  function updateCurrentTimePlusOneHour() {
-    const egyptTime = getEgyptTime();
-    egyptTime.setHours(egyptTime.getHours() + 1);
-    let h = egyptTime.getHours();
-    const m = egyptTime.getMinutes().toString().padStart(2, '0');
-    const s = egyptTime.getSeconds().toString().padStart(2, '0');
+  // عرض الوقت الحالي بالجهاز مع تحديث كل ثانية
+  function updateCurrentTime() {
+    const now = getLocalTime();
+    let h = now.getHours();
+    const m = now.getMinutes().toString().padStart(2, '0');
+    const s = now.getSeconds().toString().padStart(2, '0');
     const ampm = h >= 12 ? 'م' : 'ص';
     h = h % 12;
     if (h === 0) h = 12;
-    document.getElementById('currentTime').textContent = `الوقت بعد ساعة بتوقيت مصر: ${h}:${m}:${s} ${ampm}`;
+    document.getElementById('currentTime').textContent = `الوقت الحالي: ${h}:${m}:${s} ${ampm}`;
   }
-  setInterval(updateCurrentTimePlusOneHour, 1000);
-  updateCurrentTimePlusOneHour();
+  setInterval(updateCurrentTime, 1000);
+  updateCurrentTime();
 
   const bikeCount = 10;
   const timers = {};
@@ -97,8 +91,8 @@
       return;
     }
 
-    // نحصل على الوقت الحالي بتوقيت مصر
-    const start = getEgyptTime();
+    // نحصل على الوقت الحالي من جهاز المستخدم مباشرة
+    const start = getLocalTime();
     const end = new Date(start.getTime() + mins * 60 * 1000);
 
     database.ref("bikes/" + i).set({
@@ -115,7 +109,7 @@
     if(timers[i]) clearInterval(timers[i]);
 
     function tick() {
-      const now = getEgyptTime().getTime();
+      const now = getLocalTime().getTime();
       let diff = Math.floor((endTime - now) / 1000);
 
       if(diff <= 0) {
@@ -144,7 +138,7 @@
 
     for(let i = 1; i <= bikeCount; i++) {
       if(bikesData[i]) {
-        const { person, bikeName, endTime, startTime } = bikesData[i];
+        const { person, bikeName, endTime } = bikesData[i];
 
         document.getElementById(`person${i}`).value = person;
         document.getElementById(`bike${i}`).value = bikeName;
