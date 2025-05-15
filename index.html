@@ -1,25 +1,22 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>صفحة تأجير العجل</title>
-<style>
-  body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f5f5f5; }
-  h1 { text-align: center; margin-bottom: 20px; }
-  .bike-container { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 0 5px #ccc; }
-  label { display: block; margin-top: 10px; }
-  input, button { width: 100%; padding: 7px; margin-top: 5px; box-sizing: border-box; }
-  button { background-color: #007bff; color: white; border: none; cursor: pointer; }
-  button:hover { background-color: #0056b3; }
-  .countdown { margin-top: 10px; font-weight: bold; color: #333; }
-</style>
+  <meta charset="UTF-8" />
+  <title>تأجير العجل</title>
+  <style>
+    body { font-family: Arial; direction: rtl; background: #f0f0f0; padding: 20px; }
+    h1 { text-align: center; }
+    .bike-container { background: #fff; padding: 15px; margin: 10px 0; border-radius: 8px; box-shadow: 0 0 5px #ccc; }
+    label, input, button { display: block; width: 100%; margin-top: 5px; }
+    .countdown { margin-top: 10px; font-weight: bold; color: #444; }
+    button { background-color: #28a745; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; }
+    button:hover { background-color: #218838; }
+  </style>
 </head>
 <body>
 
 <h1>صفحة تأجير العجل</h1>
 <div id="bikesContainer"></div>
-
 <audio id="alarm" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -36,11 +33,9 @@
     appId: "1:805869746836:web:be1900eae9d5b7c6f2d281"
   };
 
-  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
-  const database = firebase.database();
-
-  const bikeCount = 10;  // عدد العجلات، غيره حسب الحاجة
+  const db = firebase.database();
+  const bikeCount = 10;
   const timers = {};
 
   const container = document.getElementById('bikesContainer');
@@ -51,13 +46,11 @@
     div.innerHTML = `
       <h3>العجلة رقم ${i}</h3>
       <label>اسم المستأجر:</label>
-      <input id="person${i}" placeholder="ادخل اسم المستأجر" />
+      <input id="person${i}" placeholder="اكتب اسم المستأجر" />
       <label>اسم العجلة:</label>
-      <input id="bike${i}" placeholder="ادخل اسم العجلة" />
-      <label>وقت بداية الإيجار (ساعة:دقيقة):</label>
-      <input id="startTime${i}" type="time" />
-      <label>مدة الإيجار (بالدقائق):</label>
-      <input type="number" id="duration${i}" min="1" placeholder="ادخل مدة الإيجار" />
+      <input id="bike${i}" placeholder="اكتب اسم العجلة" />
+      <label>مدة الإيجار (دقائق):</label>
+      <input type="number" id="duration${i}" min="1" />
       <button onclick="startRent(${i})">ابدأ الإيجار</button>
       <div class="countdown" id="countdown${i}">الوقت المتبقي: -</div>
     `;
@@ -67,39 +60,35 @@
   function startRent(i) {
     const name = document.getElementById(`person${i}`).value.trim();
     const bike = document.getElementById(`bike${i}`).value.trim();
-    const startTimeInput = document.getElementById(`startTime${i}`).value;
     const mins = parseInt(document.getElementById(`duration${i}`).value);
 
-    if (!name || !bike || !startTimeInput || isNaN(mins) || mins <= 0) {
-      alert("من فضلك املأ جميع الخانات بشكل صحيح");
+    if (!name || !bike || isNaN(mins) || mins <= 0) {
+      alert("من فضلك املأ جميع البيانات بشكل صحيح");
       return;
     }
 
-    const now = new Date();
-    const [hour, minute] = startTimeInput.split(':').map(Number);
+    const start = Date.now();
+    const end = start + mins * 60 * 1000;
 
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
-    const end = new Date(start.getTime() + mins * 60 * 1000);
-
-    database.ref("bikes/" + i).set({
+    db.ref("bikes/" + i).set({
       person: name,
       bikeName: bike,
-      startTime: start.getTime(),
-      endTime: end.getTime()
+      startTime: start,
+      endTime: end
     });
   }
 
   function updateCountdown(i, endTime, person, bikeName) {
     const countdownEl = document.getElementById(`countdown${i}`);
 
-    if(timers[i]) clearInterval(timers[i]);
+    if (timers[i]) clearInterval(timers[i]);
 
     function tick() {
       const now = Date.now();
-      let diff = Math.floor((endTime - now) / 1000);
+      const diff = Math.floor((endTime - now) / 1000);
 
-      if(diff <= 0) {
-        countdownEl.textContent = `انتهى وقت إيجار العجلة "${bikeName}" للمستأجر "${person}"!`;
+      if (diff <= 0) {
+        countdownEl.textContent = `انتهى وقت العجلة "${bikeName}" للمستأجر "${person}"`;
         document.getElementById('alarm').play();
         clearInterval(timers[i]);
         return;
@@ -107,44 +96,31 @@
 
       const mins = Math.floor(diff / 60);
       const secs = diff % 60;
-
-      const endDate = new Date(endTime);
-      const endHours = endDate.getHours().toString().padStart(2, '0');
-      const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
-
-      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${endHours}:${endMinutes}`;
+      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية`;
     }
 
     tick();
     timers[i] = setInterval(tick, 1000);
   }
 
-  database.ref("bikes").on('value', snapshot => {
-    const bikesData = snapshot.val() || {};
+  db.ref("bikes").on('value', snapshot => {
+    const data = snapshot.val() || {};
 
-    for(let i = 1; i <= bikeCount; i++) {
-      if(bikesData[i]) {
-        const { person, bikeName, endTime, startTime } = bikesData[i];
+    for (let i = 1; i <= bikeCount; i++) {
+      if (data[i]) {
+        const { person, bikeName, endTime } = data[i];
 
         document.getElementById(`person${i}`).value = person;
         document.getElementById(`bike${i}`).value = bikeName;
-
-        if(startTime) {
-          const st = new Date(startTime);
-          const sh = st.getHours().toString().padStart(2, '0');
-          const sm = st.getMinutes().toString().padStart(2, '0');
-          document.getElementById(`startTime${i}`).value = `${sh}:${sm}`;
-        }
 
         updateCountdown(i, endTime, person, bikeName);
       } else {
         document.getElementById(`person${i}`).value = '';
         document.getElementById(`bike${i}`).value = '';
-        document.getElementById(`startTime${i}`).value = '';
         document.getElementById(`duration${i}`).value = '';
-        document.getElementById(`countdown${i}`).textContent = '-';
+        document.getElementById(`countdown${i}`).textContent = 'الوقت المتبقي: -';
 
-        if(timers[i]) {
+        if (timers[i]) {
           clearInterval(timers[i]);
           timers[i] = null;
         }
