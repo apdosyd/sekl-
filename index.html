@@ -12,6 +12,7 @@
     input, button { width: 100%; padding: 7px; margin-top: 5px; box-sizing: border-box; }
     button { background-color: #007bff; color: white; border: none; cursor: pointer; }
     button:hover { background-color: #0056b3; }
+    .stop-btn { background-color: red; }
     .countdown { margin-top: 10px; font-weight: bold; color: #333; }
     #currentTime { font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 20px; }
   </style>
@@ -76,6 +77,7 @@
       <label>مدة الإيجار (بالدقائق):</label>
       <input type="number" id="duration${i}" min="1" placeholder="ادخل مدة الإيجار" />
       <button onclick="startRent(${i})" id="startBtn${i}">ابدأ الإيجار</button>
+      <button onclick="stopRent(${i})" class="stop-btn">إيقاف الإيجار</button>
       <div class="countdown" id="countdown${i}">الوقت المتبقي: -</div>
     `;
     container.appendChild(div);
@@ -102,9 +104,13 @@
     });
   }
 
+  function stopRent(i) {
+    database.ref("bikes/" + i).remove();
+  }
+
   function updateCountdown(i, endTime, person, bikeName) {
     const countdownEl = document.getElementById(`countdown${i}`);
-    if(timers[i]) clearInterval(timers[i]);
+    if (timers[i]) clearInterval(timers[i]);
 
     function tick() {
       const now = getLocalTime().getTime();
