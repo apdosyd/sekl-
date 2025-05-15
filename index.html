@@ -36,10 +36,11 @@
     appId: "1:805869746836:web:be1900eae9d5b7c6f2d281"
   };
 
+  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const database = firebase.database();
 
-  const bikeCount = 10;
+  const bikeCount = 5;  // عدد العجلات
   const timers = {};
 
   const container = document.getElementById('bikesContainer');
@@ -61,11 +62,12 @@
     container.appendChild(div);
   }
 
-  // دالة لجلب التوقيت المصري الحالي باستخدام مكتبة Intl API
+  // دالة تجيب الوقت الحالي بتوقيت مصر
   function getEgyptTime() {
     const now = new Date();
-    // نرجع وقت مصر باستخدام المنطقة الزمنية Africa/Cairo
-    return new Date(now.toLocaleString("en-US", { timeZone: "Africa/Cairo" }));
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    // توقيت مصر UTC+2
+    return new Date(utc + (2 * 60 * 60000));
   }
 
   function startRent(i) {
@@ -79,7 +81,8 @@
     }
 
     const start = getEgyptTime().getTime();
-    const end = start + mins * 60 * 1000; // تحويل الدقائق للميلي ثانية صح
+
+    const end = start + mins * 60 * 1000;
 
     database.ref("bikes/" + i).set({
       person: name,
@@ -108,7 +111,11 @@
       const mins = Math.floor(diff / 60);
       const secs = diff % 60;
 
-      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية`;
+      const endDate = new Date(endTime);
+      const endHours = endDate.getHours().toString().padStart(2, '0');
+      const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
+
+      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${endHours}:${endMinutes}`;
     }
 
     tick();
