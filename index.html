@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>صفحة تأجير العجل</title>
+<title>صفحة تأجير العجل مع الوقت بتوقيت مصر + ساعة</title>
 <style>
   body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f5f5f5; }
-  h1 { text-align: center; margin-bottom: 10px; }
-  #currentTime { text-align: center; font-size: 1.5em; margin-bottom: 20px; font-weight: bold; }
+  h1 { text-align: center; margin-bottom: 20px; }
   .bike-container { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 0 5px #ccc; }
   label { display: block; margin-top: 10px; }
   input, button { width: 100%; padding: 7px; margin-top: 5px; box-sizing: border-box; }
   button { background-color: #007bff; color: white; border: none; cursor: pointer; }
   button:hover { background-color: #0056b3; }
   .countdown { margin-top: 10px; font-weight: bold; color: #333; }
+  #currentTime { font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 20px; }
 </style>
 </head>
 <body>
@@ -28,28 +28,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
-  // ضبط توقيت مصر (UTC+2)
-  function getEgyptTime() {
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const offset = 2; // توقيت مصر +2 ساعات عن UTC
-    return new Date(utc + (3600000 * offset));
-  }
-
-  function updateCurrentTime() {
-    const egyptTime = getEgyptTime();
-    let h = egyptTime.getHours();
-    const m = egyptTime.getMinutes().toString().padStart(2, '0');
-    const s = egyptTime.getSeconds().toString().padStart(2, '0');
-    const ampm = h >= 12 ? 'م' : 'ص';
-    h = h % 12;
-    if (h === 0) h = 12;
-    document.getElementById('currentTime').textContent = `الوقت الحالي بتوقيت مصر: ${h}:${m}:${s} ${ampm}`;
-  }
-  setInterval(updateCurrentTime, 1000);
-  updateCurrentTime();
-
-  // Firebase config
+  // إعداد Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyBmGUwMrocACdo3eelRAvTMFWLD8Bc9SAo",
     authDomain: "sekl-8ceef.firebaseapp.com",
@@ -59,14 +38,36 @@
     messagingSenderId: "805869746836",
     appId: "1:805869746836:web:be1900eae9d5b7c6f2d281"
   };
-
-  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const database = firebase.database();
 
+  // دالة للحصول على التوقيت الحالي في مصر (توقيت القاهرة UTC+2 مع الأخذ في الاعتبار التوقيت الصيفي)
+  function getEgyptTime() {
+    const now = new Date();
+    // وقت UTC + 2 ساعات
+    // بدلاً من تعقيد التوقيت الصيفي نستخدم toLocaleString مع المنطقة
+    const options = { timeZone: 'Africa/Cairo', hour12: false };
+    const egyptTimeString = now.toLocaleString('en-US', options);
+    return new Date(egyptTimeString);
+  }
+
+  // تحديث عرض الوقت بعد ساعة بتوقيت مصر
+  function updateCurrentTimePlusOneHour() {
+    const egyptTime = getEgyptTime();
+    egyptTime.setHours(egyptTime.getHours() + 1);
+    let h = egyptTime.getHours();
+    const m = egyptTime.getMinutes().toString().padStart(2, '0');
+    const s = egyptTime.getSeconds().toString().padStart(2, '0');
+    const ampm = h >= 12 ? 'م' : 'ص';
+    h = h % 12;
+    if (h === 0) h = 12;
+    document.getElementById('currentTime').textContent = `الوقت بعد ساعة بتوقيت مصر: ${h}:${m}:${s} ${ampm}`;
+  }
+  setInterval(updateCurrentTimePlusOneHour, 1000);
+  updateCurrentTimePlusOneHour();
+
   const bikeCount = 10;
   const timers = {};
-
   const container = document.getElementById('bikesContainer');
 
   for (let i = 1; i <= bikeCount; i++) {
@@ -96,7 +97,7 @@
       return;
     }
 
-    // حساب توقيت مصر الحالي
+    // نحصل على الوقت الحالي بتوقيت مصر
     const start = getEgyptTime();
     const end = new Date(start.getTime() + mins * 60 * 1000);
 
@@ -128,13 +129,10 @@
       const secs = diff % 60;
 
       const endDate = new Date(endTime);
-      let eh = endDate.getHours();
-      const em = endDate.getMinutes().toString().padStart(2, '0');
-      const ampm = eh >= 12 ? 'م' : 'ص';
-      eh = eh % 12;
-      if (eh === 0) eh = 12;
+      const endHours = endDate.getHours().toString().padStart(2, '0');
+      const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
 
-      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${eh}:${em} ${ampm}`;
+      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${endHours}:${endMinutes}`;
     }
 
     tick();
