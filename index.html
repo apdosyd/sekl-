@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>صفحة تأجير العجل</title>
-  <style>
-    body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f5f5f5; }
-    h1 { text-align: center; margin-bottom: 20px; }
-    .bike-container { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 0 5px #ccc; }
-    label { display: block; margin-top: 10px; }
-    input, button { width: 100%; padding: 7px; margin-top: 5px; box-sizing: border-box; }
-    button { background-color: #007bff; color: white; border: none; cursor: pointer; }
-    button:hover { background-color: #0056b3; }
-    .countdown { margin-top: 10px; font-weight: bold; color: #333; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>صفحة تأجير العجل</title>
+<style>
+  body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f5f5f5; }
+  h1 { text-align: center; margin-bottom: 20px; }
+  .bike-container { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 0 5px #ccc; }
+  label { display: block; margin-top: 10px; }
+  input, button { width: 100%; padding: 7px; margin-top: 5px; box-sizing: border-box; }
+  button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+  button:hover { background-color: #0056b3; }
+  .countdown { margin-top: 10px; font-weight: bold; color: #333; }
+</style>
 </head>
 <body>
 
@@ -36,11 +36,13 @@
     appId: "1:805869746836:web:be1900eae9d5b7c6f2d281"
   };
 
+  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const database = firebase.database();
 
-  const bikeCount = 10;
+  const bikeCount = 10;  // عدد العجلات، غيره حسب الحاجة
   const timers = {};
+
   const container = document.getElementById('bikesContainer');
 
   for (let i = 1; i <= bikeCount; i++) {
@@ -70,29 +72,34 @@
       return;
     }
 
-    const nowUTC = new Date();
-    const egyptTime = new Date(nowUTC.getTime() + 2 * 60 * 60 * 1000); // توقيت مصر
-    const startTime = egyptTime.getTime();
-    const endTime = startTime + mins * 60 * 1000;
+    // حساب الوقت الحالي في توقيت مصر (UTC+2)
+    const nowUTC = new Date(new Date().toUTCString().slice(0, -4));
+    const nowEgypt = new Date(nowUTC.getTime() + 2 * 60 * 60 * 1000);
+
+    const start = nowEgypt.getTime();
+    const end = start + mins * 60 * 1000;
 
     database.ref("bikes/" + i).set({
       person: name,
       bikeName: bike,
-      startTime,
-      endTime
+      startTime: start,
+      endTime: end
     });
   }
 
   function updateCountdown(i, endTime, person, bikeName) {
     const countdownEl = document.getElementById(`countdown${i}`);
-    if (timers[i]) clearInterval(timers[i]);
+
+    if(timers[i]) clearInterval(timers[i]);
 
     function tick() {
-      const nowUTC = new Date();
-      const nowEgypt = nowUTC.getTime() + 2 * 60 * 60 * 1000;
-      let diff = Math.floor((endTime - nowEgypt) / 1000);
+      // الوقت الآن بتوقيت مصر
+      const nowUTC = new Date(new Date().toUTCString().slice(0, -4));
+      const now = new Date(nowUTC.getTime() + 2 * 60 * 60 * 1000).getTime();
 
-      if (diff <= 0) {
+      let diff = Math.floor((endTime - now) / 1000);
+
+      if(diff <= 0) {
         countdownEl.textContent = `انتهى وقت إيجار العجلة "${bikeName}" للمستأجر "${person}"!`;
         document.getElementById('alarm').play();
         clearInterval(timers[i]);
@@ -102,14 +109,20 @@
       const mins = Math.floor(diff / 60);
       const secs = diff % 60;
 
-      const endDate = new Date(endTime);
-      const hours = (endDate.getUTCHours() + 2) % 24;
-      const minutes = endDate.getUTCMinutes();
+      // عرض وقت النهاية بتوقيت مصر بنظام 12 ساعة
+      const endDateUTC = new Date(endTime);
+      const endDateEgypt = new Date(endDateUTC.getTime() + 2 * 60 * 60 * 1000);
 
-      const formattedHour = hours.toString().padStart(2, '0');
+      let hours24 = endDateEgypt.getHours();
+      const minutes = endDateEgypt.getMinutes();
+      const ampm = hours24 >= 12 ? 'مساءً' : 'صباحًا';
+      let hours12 = hours24 % 12;
+      if(hours12 === 0) hours12 = 12;
+
+      const formattedHour = hours12.toString().padStart(2, '0');
       const formattedMinute = minutes.toString().padStart(2, '0');
 
-      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${formattedHour}:${formattedMinute}`;
+      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${formattedHour}:${formattedMinute} ${ampm}`;
     }
 
     tick();
@@ -119,8 +132,8 @@
   database.ref("bikes").on('value', snapshot => {
     const bikesData = snapshot.val() || {};
 
-    for (let i = 1; i <= bikeCount; i++) {
-      if (bikesData[i]) {
+    for(let i = 1; i <= bikeCount; i++) {
+      if(bikesData[i]) {
         const { person, bikeName, endTime, startTime } = bikesData[i];
 
         document.getElementById(`person${i}`).value = person;
@@ -132,7 +145,8 @@
         document.getElementById(`bike${i}`).value = '';
         document.getElementById(`duration${i}`).value = '';
         document.getElementById(`countdown${i}`).textContent = '-';
-        if (timers[i]) {
+
+        if(timers[i]) {
           clearInterval(timers[i]);
           timers[i] = null;
         }
