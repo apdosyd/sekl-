@@ -1,7 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-// إعداد Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBmGUwMrocACdo3eelRAvTMFWLD8Bc9SAo",
   authDomain: "sekl-8ceef.firebaseapp.com",
@@ -12,84 +8,125 @@ const firebaseConfig = {
   appId: "1:805869746836:web:be1900eae9d5b7c6f2d281"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+// تهيئة Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
 
-const bikesContainer = document.getElementById("bikesContainer");
-const alarmSound = document.getElementById("alarmSound");
 const bikeCount = 25;
-let timers = [];
+const timers = {};
 
-function renderBike(index) {
-  const div = document.createElement("div");
-  div.className = "bike-container";
+const container = document.getElementById('bikesContainer');
+
+for (let i = 1; i <= bikeCount; i++) {
+  const div = document.createElement('div');
+  div.className = 'bike-container';
   div.innerHTML = `
-    <h3>العجلة رقم ${index}</h3>
-    <input id="name${index}" placeholder="اسم المستأجر" />
-    <input id="bike${index}" placeholder="اسم العجلة" />
-    <input id="mins${index}" type="number" placeholder="مدة الإيجار (بالدقائق)" />
-    <button id="start${index}">ابدأ الإيجار</button>
-    <div class="end-time" id="end${index}">ينتهي في: -</div>
-    <div class="countdown" id="count${index}">الوقت المتبقي: -</div>
+    <h3>العجلة رقم ${i}</h3>
+    <label>اسم المستأجر:</label>
+    <input id="person${i}" placeholder="ادخل اسم المستأجر" />
+    <label>اسم العجلة:</label>
+    <input id="bike${i}" placeholder="ادخل اسم العجلة" />
+    <label>وقت بداية الإيجار (ساعة:دقيقة):</label>
+    <input id="startTime${i}" type="time" />
+    <label>مدة الإيجار (بالدقائق):</label>
+    <input type="number" id="duration${i}" min="1" placeholder="ادخل مدة الإيجار" />
+    <button onclick="startRent(${i})">ابدأ الإيجار</button>
+    <div class="countdown" id="countdown${i}">الوقت المتبقي: -</div>
   `;
-  bikesContainer.appendChild(div);
-
-  document.getElementById(`start${index}`).addEventListener("click", () => {
-    const name = document.getElementById(`name${index}`).value.trim();
-    const bike = document.getElementById(`bike${index}`).value.trim();
-    const mins = parseInt(document.getElementById(`mins${index}`).value);
-    if (!name || !bike || isNaN(mins) || mins <= 0) {
-      alert("أدخل بيانات صحيحة");
-      return;
-    }
-
-    const now = new Date();
-    const endTime = new Date(now.getTime() + mins * 60000);
-    const data = {
-      name,
-      bike,
-      duration: mins,
-      start: now.toISOString(),
-      end: endTime.toISOString()
-    };
-
-    set(ref(db, "bikes/bike" + index), data);
-  });
+  container.appendChild(div);
 }
 
-function updateUI(index, data) {
-  const endDiv = document.getElementById(`end${index}`);
-  const countDiv = document.getElementById(`count${index}`);
-  if (!data) {
-    endDiv.textContent = "ينتهي في: -";
-    countDiv.textContent = "الوقت المتبقي: -";
+function startRent(i) {
+  const name = document.getElementById(`person${i}`).value.trim();
+  const bike = document.getElementById(`bike${i}`).value.trim();
+  const startTimeInput = document.getElementById(`startTime${i}`).value;
+  const mins = parseInt(document.getElementById(`duration${i}`).value);
+
+  if (!name || !bike || !startTimeInput || isNaN(mins) || mins <= 0) {
+    alert("من فضلك املأ جميع الخانات بشكل صحيح");
     return;
   }
 
-  const endTime = new Date(data.end);
-  const interval = setInterval(() => {
-    const now = new Date();
-    const diff = endTime - now;
-    if (diff <= 0) {
-      clearInterval(interval);
-      countDiv.textContent = `انتهى وقت العجلة ${data.bike} للمستأجر ${data.name}`;
-      alarmSound.play();
-    } else {
-      const mins = Math.floor(diff / 60000);
-      const secs = Math.floor((diff % 60000) / 1000);
-      countDiv.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية`;
-      endDiv.textContent = `ينتهي في: ${endTime.toLocaleTimeString("ar-EG")}`;
-    }
-  }, 1000);
-  timers[index] = interval;
-}
+  // الحصول على وقت البداية اليوم بالتوقيت المحلي بناءً على input type=time
+  const now = new Date();
+  const [hour, minute] = startTimeInput.split(':').map(Number);
 
-// إنشاء واجهة وبدء المراقبة
-for (let i = 1; i <= bikeCount; i++) {
-  renderBike(i);
-  const bikeRef = ref(db, "bikes/bike" + i);
-  onValue(bikeRef, (snapshot) => {
-    if (timers[i]) clearInterval(timers[i]);
-    updateUI(i, snapshot.val());
+  // ضبط بداية الوقت على نفس تاريخ اليوم مع الوقت المدخل
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
+
+  // حساب وقت النهاية بإضافة مدة الإيجار (بالدقائق)
+  const end = new Date(start.getTime() + mins * 60 * 1000);
+
+  // تخزين الوقت كبداية ونهاية بالميلي ثانية
+  database.ref("bikes/" + i).set({
+    person: name,
+    bikeName: bike,
+    startTime: start.getTime(),
+    endTime: end.getTime()
   });
 }
+
+function updateCountdown(i, endTime, person, bikeName) {
+  const countdownEl = document.getElementById(`countdown${i}`);
+
+  if(timers[i]) clearInterval(timers[i]);
+
+  function tick() {
+    const now = Date.now();
+    let diff = Math.floor((endTime - now) / 1000);
+
+    if(diff <= 0) {
+      countdownEl.textContent = `انتهى وقت إيجار العجلة "${bikeName}" للمستأجر "${person}"!`;
+      document.getElementById('alarm').play();
+      clearInterval(timers[i]);
+      return;
+    }
+
+    const mins = Math.floor(diff / 60);
+    const secs = diff % 60;
+
+    // حساب الوقت المتوقع لانتهاء الإيجار بتنسيق ساعة:دقيقة
+    const endDate = new Date(endTime);
+    const endHours = endDate.getHours().toString().padStart(2, '0');
+    const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
+
+    countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${endHours}:${endMinutes}`;
+  }
+
+  tick();
+  timers[i] = setInterval(tick, 1000);
+}
+
+database.ref("bikes").on('value', snapshot => {
+  const bikesData = snapshot.val() || {};
+
+  for(let i = 1; i <= bikeCount; i++) {
+    if(bikesData[i]) {
+      const { person, bikeName, endTime, startTime } = bikesData[i];
+
+      document.getElementById(`person${i}`).value = person;
+      document.getElementById(`bike${i}`).value = bikeName;
+      
+      // تحويل الوقت لبداية الإيجار input type=time
+      if(startTime) {
+        const st = new Date(startTime);
+        const sh = st.getHours().toString().padStart(2, '0');
+        const sm = st.getMinutes().toString().padStart(2, '0');
+        document.getElementById(`startTime${i}`).value = `${sh}:${sm}`;
+      }
+
+      updateCountdown(i, endTime, person, bikeName);
+    } else {
+      document.getElementById(`person${i}`).value = '';
+      document.getElementById(`bike${i}`).value = '';
+      document.getElementById(`startTime${i}`).value = '';
+      document.getElementById(`duration${i}`).value = '';
+      document.getElementById(`countdown${i}`).textContent = '-';
+
+      if(timers[i]) {
+        clearInterval(timers[i]);
+        timers[i] = null;
+      }
+    }
+  }
+});
