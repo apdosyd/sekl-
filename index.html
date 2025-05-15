@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <title>إيجار 25 عجلة</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; }
+    input { font-size: 1em; padding: 6px; margin: 3px 0; width: 100%; box-sizing: border-box; }
+    label { font-weight: bold; margin-top: 8px; display: block; }
+    button { font-size: 1em; padding: 6px 10px; margin-top: 6px; width: 100%; }
+    .bike-container { border: 1px solid #ccc; padding: 12px; margin-bottom: 15px; border-radius: 8px; }
+    .countdown { font-size: 1.2em; color: #d33; margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+  <h1>برنامج إيجار 25 عجلة</h1>
+
+  <div id="bikesContainer"></div>
+
+  <audio id="alarm" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script src="app.js"></script> <!-- هنا بنربط كود الجافاسكريبت -->
+
+</body>
+</html>>
