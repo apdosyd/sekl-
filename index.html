@@ -3,160 +3,94 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>صفحة تأجير العجل مع الوقت المحلي للجهاز</title>
+<title>تأجير العجل مع حساب الوقت المتبقي ووقت الانتهاء</title>
 <style>
-  body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f5f5f5; }
+  body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f0f0f0; }
   h1 { text-align: center; margin-bottom: 20px; }
-  .bike-container { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 0 5px #ccc; }
-  label { display: block; margin-top: 10px; }
-  input, button { width: 100%; padding: 7px; margin-top: 5px; box-sizing: border-box; }
-  button { background-color: #007bff; color: white; border: none; cursor: pointer; }
-  button:hover { background-color: #0056b3; }
-  .countdown { margin-top: 10px; font-weight: bold; color: #333; }
-  #currentTime { font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 20px; }
+  .container { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+  label { display: block; margin-top: 15px; }
+  input[type="time"], input[type="number"], input[type="text"] { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; font-size: 16px; }
+  button { margin-top: 20px; width: 100%; padding: 10px; background: #007bff; color: white; border: none; font-size: 18px; cursor: pointer; border-radius: 4px; }
+  button:hover { background: #0056b3; }
+  .result { margin-top: 25px; font-size: 18px; text-align: center; }
 </style>
 </head>
 <body>
 
-<h1>صفحة تأجير العجل</h1>
-<div id="currentTime">جارٍ تحميل الوقت...</div>
-<div id="bikesContainer"></div>
+<h1>حساب وقت تأجير العجلة</h1>
 
-<audio id="alarm" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
+<div class="container">
+  <label>اسم المستأجر:</label>
+  <input type="text" id="renterName" placeholder="ادخل اسم المستأجر" />
 
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <label>وقت بداية الإيجار (ساعة:دقيقة):</label>
+  <input type="time" id="startTime" step="60" />
+
+  <label>مدة الإيجار بالدقائق:</label>
+  <input type="number" id="duration" min="1" placeholder="مثلاً 30" />
+
+  <button onclick="calculateEndTime()">احسب وقت الانتهاء والوقت المتبقي</button>
+
+  <div class="result" id="output"></div>
+</div>
 
 <script>
-  // إعداد Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyBmGUwMrocACdo3eelRAvTMFWLD8Bc9SAo",
-    authDomain: "sekl-8ceef.firebaseapp.com",
-    databaseURL: "https://sekl-8ceef-default-rtdb.firebaseio.com",
-    projectId: "sekl-8ceef",
-    storageBucket: "sekl-8ceef.appspot.com",
-    messagingSenderId: "805869746836",
-    appId: "1:805869746836:web:be1900eae9d5b7c6f2d281"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const database = firebase.database();
+  function calculateEndTime() {
+    const renterName = document.getElementById('renterName').value.trim();
+    const startTimeInput = document.getElementById('startTime').value;
+    const duration = parseInt(document.getElementById('duration').value);
 
-  // دالة ترجع الوقت المحلي للجهاز بدون تعديل
-  function getLocalTime() {
-    return new Date();
-  }
-
-  // عرض الوقت الحالي بالجهاز مع تحديث كل ثانية
-  function updateCurrentTime() {
-    const now = getLocalTime();
-    let h = now.getHours();
-    const m = now.getMinutes().toString().padStart(2, '0');
-    const s = now.getSeconds().toString().padStart(2, '0');
-    const ampm = h >= 12 ? 'م' : 'ص';
-    h = h % 12;
-    if (h === 0) h = 12;
-    document.getElementById('currentTime').textContent = `الوقت الحالي: ${h}:${m}:${s} ${ampm}`;
-  }
-  setInterval(updateCurrentTime, 1000);
-  updateCurrentTime();
-
-  const bikeCount = 10;
-  const timers = {};
-  const container = document.getElementById('bikesContainer');
-
-  for (let i = 1; i <= bikeCount; i++) {
-    const div = document.createElement('div');
-    div.className = 'bike-container';
-    div.innerHTML = `
-      <h3>العجلة رقم ${i}</h3>
-      <label>اسم المستأجر:</label>
-      <input id="person${i}" placeholder="ادخل اسم المستأجر" />
-      <label>اسم العجلة:</label>
-      <input id="bike${i}" placeholder="ادخل اسم العجلة" />
-      <label>مدة الإيجار (بالدقائق):</label>
-      <input type="number" id="duration${i}" min="1" placeholder="ادخل مدة الإيجار" />
-      <button onclick="startRent(${i})">ابدأ الإيجار</button>
-      <div class="countdown" id="countdown${i}">الوقت المتبقي: -</div>
-    `;
-    container.appendChild(div);
-  }
-
-  function startRent(i) {
-    const name = document.getElementById(`person${i}`).value.trim();
-    const bike = document.getElementById(`bike${i}`).value.trim();
-    const mins = parseInt(document.getElementById(`duration${i}`).value);
-
-    if (!name || !bike || isNaN(mins) || mins <= 0) {
-      alert("من فضلك املأ جميع الخانات بشكل صحيح");
+    if (!renterName) {
+      alert('من فضلك ادخل اسم المستأجر');
+      return;
+    }
+    if (!startTimeInput) {
+      alert('من فضلك ادخل وقت بداية الإيجار');
+      return;
+    }
+    if (isNaN(duration) || duration <= 0) {
+      alert('من فضلك ادخل مدة إيجار صحيحة بالدقائق');
       return;
     }
 
-    // نحصل على الوقت الحالي من جهاز المستخدم مباشرة
-    const start = getLocalTime();
-    const end = new Date(start.getTime() + mins * 60 * 1000);
+    // الوقت الحالي في جهاز المستخدم
+    const now = new Date();
 
-    database.ref("bikes/" + i).set({
-      person: name,
-      bikeName: bike,
-      startTime: start.getTime(),
-      endTime: end.getTime()
-    });
+    // استخرج الساعات والدقائق من input الوقت (صيغة "HH:MM")
+    const [startHours, startMinutes] = startTimeInput.split(':').map(Number);
+
+    // نعمل تاريخ جديد لبداية الإيجار بناء على اليوم الحالي ووقت البداية اللي دخلته
+    const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHours, startMinutes, 0);
+
+    // نحسب وقت الانتهاء بإضافة مدة الإيجار بالدقائق
+    const endDate = new Date(startDate.getTime() + duration * 60000);
+
+    // نحسب الوقت المتبقي بين الان ووقت الانتهاء
+    let diff = Math.floor((endDate.getTime() - now.getTime()) / 1000); // بالثواني
+
+    // لو الوقت الحالي بعد وقت الانتهاء يبقى صفر أو انتهى
+    if (diff < 0) diff = 0;
+
+    const remainMinutes = Math.floor(diff / 60);
+    const remainSeconds = diff % 60;
+
+    // صيغة عرض وقت الانتهاء (ساعة:دقيقة صباحاً / مساءً)
+    let endHours = endDate.getHours();
+    const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
+    const ampm = endHours >= 12 ? 'م' : 'ص';
+    endHours = endHours % 12;
+    if (endHours === 0) endHours = 12;
+
+    // عرض النتائج
+    const outputDiv = document.getElementById('output');
+    outputDiv.innerHTML = `
+      المستأجر: <strong>${renterName}</strong><br/>
+      وقت بداية الإيجار: <strong>${startHours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}</strong><br/>
+      مدة الإيجار: <strong>${duration} دقيقة</strong><br/>
+      الوقت المتبقي: <strong>${remainMinutes} دقيقة و ${remainSeconds} ثانية</strong><br/>
+      وقت انتهاء الإيجار: <strong>${endHours}:${endMinutes} ${ampm}</strong>
+    `;
   }
-
-  function updateCountdown(i, endTime, person, bikeName) {
-    const countdownEl = document.getElementById(`countdown${i}`);
-
-    if(timers[i]) clearInterval(timers[i]);
-
-    function tick() {
-      const now = getLocalTime().getTime();
-      let diff = Math.floor((endTime - now) / 1000);
-
-      if(diff <= 0) {
-        countdownEl.textContent = `انتهى وقت إيجار العجلة "${bikeName}" للمستأجر "${person}"!`;
-        document.getElementById('alarm').play();
-        clearInterval(timers[i]);
-        return;
-      }
-
-      const mins = Math.floor(diff / 60);
-      const secs = diff % 60;
-
-      const endDate = new Date(endTime);
-      const endHours = endDate.getHours().toString().padStart(2, '0');
-      const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
-
-      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${endHours}:${endMinutes}`;
-    }
-
-    tick();
-    timers[i] = setInterval(tick, 1000);
-  }
-
-  database.ref("bikes").on('value', snapshot => {
-    const bikesData = snapshot.val() || {};
-
-    for(let i = 1; i <= bikeCount; i++) {
-      if(bikesData[i]) {
-        const { person, bikeName, endTime } = bikesData[i];
-
-        document.getElementById(`person${i}`).value = person;
-        document.getElementById(`bike${i}`).value = bikeName;
-
-        updateCountdown(i, endTime, person, bikeName);
-      } else {
-        document.getElementById(`person${i}`).value = '';
-        document.getElementById(`bike${i}`).value = '';
-        document.getElementById(`duration${i}`).value = '';
-        document.getElementById(`countdown${i}`).textContent = '-';
-
-        if(timers[i]) {
-          clearInterval(timers[i]);
-          timers[i] = null;
-        }
-      }
-    }
-  });
 </script>
 
 </body>
