@@ -22,7 +22,6 @@
 
 <audio id="alarm" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
 
-<!-- Firebase Scripts -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
@@ -42,7 +41,6 @@
 
   const bikeCount = 10;
   const timers = {};
-
   const container = document.getElementById('bikesContainer');
 
   for (let i = 1; i <= bikeCount; i++) {
@@ -54,8 +52,6 @@
       <input id="person${i}" placeholder="ادخل اسم المستأجر" />
       <label>اسم العجلة:</label>
       <input id="bike${i}" placeholder="ادخل اسم العجلة" />
-      <label>وقت بداية الإيجار (ساعة:دقيقة):</label>
-      <input id="startTime${i}" type="time" />
       <label>مدة الإيجار (بالدقائق):</label>
       <input type="number" id="duration${i}" min="1" placeholder="ادخل مدة الإيجار" />
       <button onclick="startRent(${i})">ابدأ الإيجار</button>
@@ -67,42 +63,35 @@
   function startRent(i) {
     const name = document.getElementById(`person${i}`).value.trim();
     const bike = document.getElementById(`bike${i}`).value.trim();
-    const startTimeInput = document.getElementById(`startTime${i}`).value;
     const mins = parseInt(document.getElementById(`duration${i}`).value);
 
-    if (!name || !bike || !startTimeInput || isNaN(mins) || mins <= 0) {
+    if (!name || !bike || isNaN(mins) || mins <= 0) {
       alert("من فضلك املأ جميع الخانات بشكل صحيح");
       return;
     }
 
     const now = new Date();
-    const [hour, minute] = startTimeInput.split(':').map(Number);
-
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
-    const end = new Date(start.getTime() + mins * 60 * 1000);
-
-    const endHours = end.getHours().toString().padStart(2, '0');
-    const endMinutes = end.getMinutes().toString().padStart(2, '0');
-    alert(`موعد نهاية الإيجار: ${endHours}:${endMinutes}`);
+    const egyptTime = new Date(now.getTime() + (2 * 60 * 60 * 1000)); // توقيت مصر UTC+2
+    const startTime = egyptTime.getTime();
+    const endTime = startTime + mins * 60 * 1000;
 
     database.ref("bikes/" + i).set({
       person: name,
       bikeName: bike,
-      startTime: start.getTime(),
-      endTime: end.getTime()
+      startTime,
+      endTime
     });
   }
 
   function updateCountdown(i, endTime, person, bikeName) {
     const countdownEl = document.getElementById(`countdown${i}`);
-
-    if(timers[i]) clearInterval(timers[i]);
+    if (timers[i]) clearInterval(timers[i]);
 
     function tick() {
-      const now = Date.now();
+      const now = new Date().getTime() + (2 * 60 * 60 * 1000); // توقيت مصر
       let diff = Math.floor((endTime - now) / 1000);
 
-      if(diff <= 0) {
+      if (diff <= 0) {
         countdownEl.textContent = `انتهى وقت إيجار العجلة "${bikeName}" للمستأجر "${person}"!`;
         document.getElementById('alarm').play();
         clearInterval(timers[i]);
@@ -113,10 +102,11 @@
       const secs = diff % 60;
 
       const endDate = new Date(endTime);
-      const endHours = endDate.getHours().toString().padStart(2, '0');
-      const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
+      const hours = endDate.getUTCHours() + 2; // UTC+2
+      const minutes = endDate.getUTCMinutes().toString().padStart(2, '0');
+      const displayHour = (hours % 24).toString().padStart(2, '0');
 
-      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${endHours}:${endMinutes}`;
+      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${displayHour}:${minutes}`;
     }
 
     tick();
@@ -126,29 +116,21 @@
   database.ref("bikes").on('value', snapshot => {
     const bikesData = snapshot.val() || {};
 
-    for(let i = 1; i <= bikeCount; i++) {
-      if(bikesData[i]) {
-        const { person, bikeName, endTime, startTime } = bikesData[i];
+    for (let i = 1; i <= bikeCount; i++) {
+      if (bikesData[i]) {
+        const { person, bikeName, endTime } = bikesData[i];
 
         document.getElementById(`person${i}`).value = person;
         document.getElementById(`bike${i}`).value = bikeName;
-
-        if(startTime) {
-          const st = new Date(startTime);
-          const sh = st.getHours().toString().padStart(2, '0');
-          const sm = st.getMinutes().toString().padStart(2, '0');
-          document.getElementById(`startTime${i}`).value = `${sh}:${sm}`;
-        }
 
         updateCountdown(i, endTime, person, bikeName);
       } else {
         document.getElementById(`person${i}`).value = '';
         document.getElementById(`bike${i}`).value = '';
-        document.getElementById(`startTime${i}`).value = '';
         document.getElementById(`duration${i}`).value = '';
         document.getElementById(`countdown${i}`).textContent = '-';
 
-        if(timers[i]) {
+        if (timers[i]) {
           clearInterval(timers[i]);
           timers[i] = null;
         }
