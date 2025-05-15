@@ -36,11 +36,10 @@
     appId: "1:805869746836:web:be1900eae9d5b7c6f2d281"
   };
 
-  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const database = firebase.database();
 
-  const bikeCount = 10;  // عدد العجلات، غيره حسب الحاجة
+  const bikeCount = 10;
   const timers = {};
 
   const container = document.getElementById('bikesContainer');
@@ -62,6 +61,13 @@
     container.appendChild(div);
   }
 
+  // دالة لجلب التوقيت المصري الحالي باستخدام مكتبة Intl API
+  function getEgyptTime() {
+    const now = new Date();
+    // نرجع وقت مصر باستخدام المنطقة الزمنية Africa/Cairo
+    return new Date(now.toLocaleString("en-US", { timeZone: "Africa/Cairo" }));
+  }
+
   function startRent(i) {
     const name = document.getElementById(`person${i}`).value.trim();
     const bike = document.getElementById(`bike${i}`).value.trim();
@@ -72,12 +78,8 @@
       return;
     }
 
-    // حساب الوقت الحالي في توقيت مصر (UTC+2)
-    const nowUTC = new Date(new Date().toUTCString().slice(0, -4));
-    const nowEgypt = new Date(nowUTC.getTime() + 2 * 60 * 60 * 1000);
-
-    const start = nowEgypt.getTime();
-    const end = start + mins * 60 * 1000;
+    const start = getEgyptTime().getTime();
+    const end = start + mins * 60 * 1000; // تحويل الدقائق للميلي ثانية صح
 
     database.ref("bikes/" + i).set({
       person: name,
@@ -93,10 +95,7 @@
     if(timers[i]) clearInterval(timers[i]);
 
     function tick() {
-      // الوقت الآن بتوقيت مصر
-      const nowUTC = new Date(new Date().toUTCString().slice(0, -4));
-      const now = new Date(nowUTC.getTime() + 2 * 60 * 60 * 1000).getTime();
-
+      const now = getEgyptTime().getTime();
       let diff = Math.floor((endTime - now) / 1000);
 
       if(diff <= 0) {
@@ -109,20 +108,7 @@
       const mins = Math.floor(diff / 60);
       const secs = diff % 60;
 
-      // عرض وقت النهاية بتوقيت مصر بنظام 12 ساعة
-      const endDateUTC = new Date(endTime);
-      const endDateEgypt = new Date(endDateUTC.getTime() + 2 * 60 * 60 * 1000);
-
-      let hours24 = endDateEgypt.getHours();
-      const minutes = endDateEgypt.getMinutes();
-      const ampm = hours24 >= 12 ? 'مساءً' : 'صباحًا';
-      let hours12 = hours24 % 12;
-      if(hours12 === 0) hours12 = 12;
-
-      const formattedHour = hours12.toString().padStart(2, '0');
-      const formattedMinute = minutes.toString().padStart(2, '0');
-
-      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | ينتهي الساعة: ${formattedHour}:${formattedMinute} ${ampm}`;
+      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية`;
     }
 
     tick();
@@ -134,7 +120,7 @@
 
     for(let i = 1; i <= bikeCount; i++) {
       if(bikesData[i]) {
-        const { person, bikeName, endTime, startTime } = bikesData[i];
+        const { person, bikeName, endTime } = bikesData[i];
 
         document.getElementById(`person${i}`).value = person;
         document.getElementById(`bike${i}`).value = bikeName;
