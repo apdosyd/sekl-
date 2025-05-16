@@ -12,7 +12,6 @@
     input, button { width: 100%; padding: 7px; margin-top: 5px; box-sizing: border-box; }
     button { background-color: #007bff; color: white; border: none; cursor: pointer; }
     button:hover { background-color: #0056b3; }
-    .stop-btn { background-color: red; }
     .countdown { margin-top: 10px; font-weight: bold; color: #333; }
     #currentTime { font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 20px; }
   </style>
@@ -77,7 +76,7 @@
       <label>مدة الإيجار (بالدقائق):</label>
       <input type="number" id="duration${i}" min="1" placeholder="ادخل مدة الإيجار" />
       <button onclick="startRent(${i})" id="startBtn${i}">ابدأ الإيجار</button>
-      <button onclick="stopRent(${i})" class="stop-btn">إيقاف الإيجار</button>
+      <button onclick="stopRent(${i})" id="stopBtn${i}" style="background-color: #dc3545; margin-top: 5px;">إيقاف الإيجار</button>
       <div class="countdown" id="countdown${i}">الوقت المتبقي: -</div>
     `;
     container.appendChild(div);
@@ -116,8 +115,13 @@
       const now = getLocalTime().getTime();
       let diff = Math.floor((endTime - now) / 1000);
 
+      const returnTime = formatTime12(new Date(endTime));
+
       if (diff <= 0) {
-        countdownEl.textContent = `انتهى وقت إيجار "${bikeName}" لـ "${person}"!`;
+        countdownEl.innerHTML = `
+          انتهى وقت إيجار "<strong>${bikeName}</strong>" لـ "<strong>${person}</strong>"!<br>
+          وقت انتهاء الإيجار كان الساعة: <strong>${returnTime}</strong>
+        `;
         document.getElementById('alarm').play();
         clearInterval(timers[i]);
         document.getElementById(`startBtn${i}`).disabled = false;
@@ -129,8 +133,10 @@
 
       const mins = Math.floor(diff / 60);
       const secs = diff % 60;
-      const returnTime = formatTime12(new Date(endTime));
-      countdownEl.textContent = `الوقت المتبقي: ${mins} دقيقة و ${secs} ثانية | يرجع الساعة: ${returnTime}`;
+      countdownEl.innerHTML = `
+        الوقت المتبقي: <strong>${mins}</strong> دقيقة و <strong>${secs}</strong> ثانية<br>
+        يرجع الساعة: <strong>${returnTime}</strong>
+      `;
     }
 
     tick();
